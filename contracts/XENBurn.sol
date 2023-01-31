@@ -25,7 +25,7 @@ import "./interfaces/IXENBurner.sol";
            //\\      ||            ||   \\ ||       - Immutable contract
           //  \\     ||            ||    \\||
          //    \\    ||            ||     \\|
-        //      \\   |||||||||||   ||      \|       Copyright (C) FairCrypto Foundation 2022
+        //      \\   |||||||||||   ||      \|       Copyright (C) FairCrypto Foundation 2022-23
 
 
     XENFT XEN Burn props:
@@ -52,7 +52,7 @@ contract XENBurn is
 
     // PUBLIC MUTABLE STATE
 
-    // increasing counters for NFT tokenIds, also used as salt for proxies' spinning
+    // increasing counters for NFT tokenIds
     uint256 public tokenIdCounter = 1;
     // mapping: NFT tokenId => burned XEN
     mapping(uint256 => uint256) public xenBurned;
@@ -183,7 +183,7 @@ contract XENBurn is
         xenBurned[_tokenId] = burned;
         _safeMint(user, _tokenId);
         tokenIdCounter++;
-        // TODO: emit even ???
+        // TODO: emit event ???
         //emit StartTorrent(user, vmuCount[_tokenId], mintInfo[_tokenId].getTerm());
         _tokenId = _NOT_USED;
     }
