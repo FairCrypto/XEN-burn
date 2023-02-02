@@ -10,12 +10,13 @@ import "@faircrypto/xen-crypto/contracts/interfaces/IBurnableToken.sol";
 import "@faircrypto/xen-crypto/contracts/interfaces/IBurnRedeemable.sol";
 import "@faircrypto/magic-numbers/contracts/MagicNumbers.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
-import "./libs/ERC2771Context.sol";
+import "./interfaces/IXENBurner.sol";
+import "./interfaces/IXENBurn.sol";
 import "./interfaces/IERC2771.sol";
+import "./libs/ERC2771Context.sol";
 import "./libs/BurnInfo.sol";
 import "./libs/BurnMetadata.sol";
 import "./libs/Array.sol";
-import "./interfaces/IXENBurner.sol";
 
 /*
 
@@ -36,6 +37,7 @@ import "./interfaces/IXENBurner.sol";
     - rarityScore
  */
 contract XENBurn is
+    IXENBurn,
     IBurnRedeemable,
     IXENBurner,
     DefaultOperatorFilterer, // required to support OpenSea royalties
@@ -193,8 +195,7 @@ contract XENBurn is
         burnInfo[_tokenId] = _burnInfo(_tokenId, burned);
         _safeMint(user, _tokenId);
         tokenIdCounter++;
-        // TODO: emit event ???
-        // emit TokensBurned(user, burned);
+        emit Burned(user, burned);
         _tokenId = _NOT_USED;
     }
 
