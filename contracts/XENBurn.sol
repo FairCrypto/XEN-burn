@@ -8,9 +8,11 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@faircrypto/xen-crypto/contracts/XENCrypto.sol";
 import "@faircrypto/xen-crypto/contracts/interfaces/IBurnableToken.sol";
 import "@faircrypto/xen-crypto/contracts/interfaces/IBurnRedeemable.sol";
+import "@faircrypto/magic-numbers/contracts/MagicNumbers.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 import "./libs/ERC2771Context.sol";
 import "./interfaces/IERC2771.sol";
+import "./libs/BurnInfo.sol";
 import "./libs/BurnMetadata.sol";
 import "./libs/Array.sol";
 import "./interfaces/IXENBurner.sol";
@@ -29,7 +31,9 @@ import "./interfaces/IXENBurner.sol";
 
 
     XENFT XEN Burn props:
-    - burned: XEN burned
+    - burned/amount: XEN burned,
+    - burnTs,
+    - rarityScore
  */
 contract XENBurn is
     IBurnRedeemable,
@@ -42,6 +46,8 @@ contract XENBurn is
     // HELPER LIBRARIES
 
     using Strings for uint256;
+    using BurnInfo for uint256;
+    using MagicNumbers for uint256;
     using Array for uint256[];
 
     // PUBLIC CONSTANTS
@@ -56,6 +62,8 @@ contract XENBurn is
     uint256 public tokenIdCounter = 1;
     // mapping: NFT tokenId => burned XEN
     mapping(uint256 => uint256) public xenBurned;
+    // tokenId => burnInfo
+    mapping(uint256 => uint256) public burnInfo;
 
     // PUBLIC IMMUTABLE STATE
 
@@ -138,7 +146,8 @@ contract XENBurn is
         @dev compliance with ERC-721 standard (NFT); returns NFT metadata, including SVG-encoded image
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        uint256 burned = xenBurned[tokenId];
+        uint256 info = burnInfo[tokenId];
+        //uint256 burned = xenBurned[tokenId];
         bytes memory dataURI = abi.encodePacked(
             "{",
             '"name": "XEN Burn #',
@@ -147,10 +156,10 @@ contract XENBurn is
             '"description": "XENFT: XEN Proof Of Burn",',
             '"image": "',
             "data:image/svg+xml;base64,",
-            Base64.encode(BurnMetadata.svgData(tokenId, address(xenCrypto), burned)),
+            Base64.encode(BurnMetadata.svgData(tokenId, info, address(xenCrypto))),
             '",',
             '"attributes": ',
-            BurnMetadata.attributes(burned),
+            BurnMetadata.attributes(info),
             "}"
         );
         return string(abi.encodePacked("data:application/json;base64,", Base64.encode(dataURI)));
@@ -181,10 +190,11 @@ contract XENBurn is
         require(msg.sender == address(xenCrypto), "XENFT: illegal callback caller");
         _ownedTokens[user].addItem(_tokenId);
         xenBurned[_tokenId] = burned;
+        burnInfo[_tokenId] = _burnInfo(_tokenId, burned);
         _safeMint(user, _tokenId);
         tokenIdCounter++;
         // TODO: emit event ???
-        //emit StartTorrent(user, vmuCount[_tokenId], mintInfo[_tokenId].getTerm());
+        // emit TokensBurned(user, burned);
         _tokenId = _NOT_USED;
     }
 
@@ -257,6 +267,31 @@ contract XENBurn is
     function royaltyInfo(uint256, uint256 salePrice) external view returns (address receiver, uint256 royaltyAmount) {
         receiver = _royaltyReceiver;
         royaltyAmount = (salePrice * ROYALTY_BP) / 10_000;
+    }
+
+    // XEN BURN PRIVATE / INTERNAL HELPERS
+
+    /**
+        @dev internal burn interface. calculates rarityBits and rarityScore
+     */
+    function _calcRarity(uint256 tokenId) private view returns (uint256 rarityScore, uint256 rarityBits) {
+        bool isPrime = tokenId.isPrime();
+        bool isFib = tokenId.isFib();
+        bool blockIsPrime = block.number.isPrime();
+        bool blockIsFib = block.number.isFib();
+        rarityScore += (isPrime ? 500 : 0);
+        rarityScore += (blockIsPrime ? 1_000 : 0);
+        rarityScore += (isFib ? 5_000 : 0);
+        rarityScore += (blockIsFib ? 10_000 : 0);
+        rarityBits = BurnInfo.encodeRarityBits(isPrime, isFib, blockIsPrime, blockIsFib);
+    }
+
+    /**
+        @dev internal burn interface. composes BurnInfo
+     */
+    function _burnInfo(uint256 tokenId, uint256 amount) private view returns (uint256 info) {
+        (uint256 rarityScore, uint256 rarityBits) = _calcRarity(tokenId);
+        info = BurnInfo.encodeBurnInfo(block.timestamp, amount / 10 ** 18, rarityScore, rarityBits);
     }
 
     // PUBLIC GETTERS

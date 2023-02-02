@@ -16,6 +16,7 @@ library BurnSVG {
         address xenAddress;
         uint256 tokenId;
         uint256 xenBurned;
+        uint256 rarityScore;
     }
 
     // Type to encode SVG gradient stop color on HSL color scale
@@ -32,6 +33,12 @@ library BurnSVG {
         Color[] colors;
         uint256 id;
         uint256[4] coords;
+    }
+
+    struct ScalePos {
+        uint256 yPos;
+        bytes scale1;
+        bytes scale2;
     }
 
     using DateTime for uint256;
@@ -54,12 +61,12 @@ library BurnSVG {
         "<path "
         'stroke="none" '
         'fill="url(#g1)" '
-        'transform="translate(160,566), scale(2.8)" '
+        'transform="translate(170,566), scale(2.8)" '
         'd="M -14 0 c -13 -13 -18 -26 -13 -37 c 8 -17 15 -24 11 -45 c 0 0 15 -2 27 28 c 0 0 10 -1 8 -18 c 3 -1 35 43 1 72 z"/>'
         "<path "
         'stroke="none" '
         'fill="url(#g1)" '
-        'transform="translate(160,566), scale(2.5)" '
+        'transform="translate(170,566), scale(2.5)" '
         'd="M -10 0 c -13 -13 -18 -26 -9 -39 c 8 -17 14 -20 9 -34 c 10 6 13 13 19 31 c 9 -2 13 -7 14 -17 c 3 -1 15 37 -7 59 z"/>'
         "</g>";
 
@@ -202,10 +209,31 @@ library BurnSVG {
     }
 
     /**
-        @dev internal helper to create XEN logo line pattern with 2 SVG `lines`
+        @dev internal helper to create flame pattern
      */
-    function logo() internal pure returns (bytes memory) {
-        return abi.encodePacked();
+    function burn(bytes memory scale1, bytes memory scale2, uint256 yPos) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            "<g>"
+            "<path "
+            'stroke="none" '
+            'fill="url(#g1)" '
+            'transform="translate(170,',
+            yPos.toString(),
+            '), scale(',
+            scale1,
+            ')" '
+            'd="M -14 0 c -13 -13 -18 -26 -13 -37 c 8 -17 15 -24 11 -45 c 0 0 15 -2 27 28 c 0 0 10 -1 8 -18 c 3 -1 35 43 1 72 z"/>'
+            "<path "
+            'stroke="none" '
+            'fill="url(#g1)" '
+            'transform="translate(170,',
+            yPos.toString(),
+            '), scale(',
+            scale2,
+            ')" '
+            'd="M -10 0 c -13 -13 -18 -26 -9 -39 c 8 -17 14 -20 9 -34 c 10 6 13 13 19 31 c 9 -2 13 -7 14 -17 c 3 -1 15 37 -7 59 z"/>'
+            "</g>"
+        );
     }
 
     /**
@@ -230,7 +258,7 @@ library BurnSVG {
     /**
         @dev internal helper to create 1st part of metadata section of SVG
      */
-    function meta1(uint256 tokenId, uint256 xenBurned) internal pure returns (bytes memory) {
+    function meta1(uint256 tokenId, uint256 xenBurned, uint256 rarityScore) internal pure returns (bytes memory) {
         bytes memory part1 = abi.encodePacked(
             "<text "
             'x="50%" '
@@ -246,7 +274,7 @@ library BurnSVG {
             'class="base burn" '
             'text-anchor="middle" '
             'dominant-baseline="middle"> ',
-            xenBurned > 0 ? string.concat((xenBurned / 10**18).toFormattedString(), " X") : "",
+            xenBurned > 0 ? string.concat(xenBurned.toFormattedString(), " X") : "",
             "</text>"
             "<text "
             'x="18%" '
@@ -265,7 +293,24 @@ library BurnSVG {
             'BURN'
             "</text>"
         );
-        return abi.encodePacked(part1);
+        bytes memory part2 = abi.encodePacked(
+            "<text "
+            'x="18%" '
+            'y="68%" '
+            'class="base meta" '
+            'dominant-baseline="middle"> '
+            "Rarity",
+            "</text>"
+            "<text "
+            'x="82%" '
+            'y="68%" '
+            'class="base meta " '
+            'dominant-baseline="middle" '
+            'text-anchor="end" >',
+            rarityScore.toString(),
+            "</text>"
+        );
+        return abi.encodePacked(part1, part2);
     }
 
     /**
@@ -273,13 +318,14 @@ library BurnSVG {
      */
     function image(
         SvgParams memory params,
-        Gradient[] memory gradients
+        Gradient[] memory gradients,
+        ScalePos memory scalePos
     ) internal pure returns (bytes memory) {
-        string memory mark = _BURN;
+        bytes memory mark = burn(scalePos.scale1, scalePos.scale2, scalePos.yPos);
         bytes memory graphics = abi.encodePacked(defs(gradients), _STYLE, g(1), _LOGO, mark);
         bytes memory metadata = abi.encodePacked(
             contractData(params.symbol, params.xenAddress),
-            meta1(params.tokenId, params.xenBurned)
+            meta1(params.tokenId, params.xenBurned, params.rarityScore)
         );
         return
             abi.encodePacked(

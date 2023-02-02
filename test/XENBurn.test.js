@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 const assert = require('assert');
-//const { Contract } = require('ethers');
-//const { Web3Provider } = require('@ethersproject/providers');
 const timeMachine = require('ganache-time-traveler');
 const {toBigInt} = require("../src/utils");
-const {Contract} = require("ethers");
-const {Web3Provider} = require("@ethersproject/providers");
+// const {Contract} = require("ethers");
+// const {Web3Provider} = require("@ethersproject/providers");
 
 const XENCrypto = artifacts.require("XENCrypto");
 const XENBurn = artifacts.require("XENBurn");
@@ -93,10 +91,9 @@ contract("XEN Burn", async accounts => {
         const { gasUsed } = res.receipt;
         //console.log(res.logs)
         tokenId  = res.logs[0].args[2].toNumber();
-        //parseInt(extraPrint || '0') > 0 && console.log('tokenId', newTokenId.toNumber(), 'gas used', gasUsed);
+        parseInt(extraPrint || '0') > 0 && console.log('tokenId', tokenId, 'gas used', gasUsed);
         assert.ok(tokenId === 1);
         //assert.ok(BigInt(expectedAmount.toString()) === amount);
-        //assert.ok(expectedTerm.toNumber() === term);
     })
 
     it("Should be able to return tokenURI as base-64 encoded data URL", async () => {
@@ -111,7 +108,7 @@ contract("XEN Burn", async accounts => {
         assert.ok('image' in metadata);
         assert.ok('attributes' in metadata);
         assert.ok(Array.isArray(metadata.attributes));
-        assertAttribute(metadata.attributes)('Burned', (amount / ether).toString());
+        assertAttribute(metadata.attributes)('Burned XEN', (amount / ether).toString());
         assert.ok(metadata.image.startsWith('data:image/svg+xml;base64,'));
         const imageBase64 = metadata.image.replace('data:image/svg+xml;base64,', '');
         const decodedImage = Buffer.from(imageBase64, 'base64').toString();
@@ -121,11 +118,12 @@ contract("XEN Burn", async accounts => {
     })
 
     it("Should allow to perform another burn operation with correct params and approval", async () => {
+        const amount = 10_001n * ether;
         xenBalance = await token.balanceOf(accounts[1], { from: accounts[1] }).then(toBigInt);
         assert.ok(xenBalance > amount)
         await assert.doesNotReject(() => token.approve(xenBurn.address, amount, { from: accounts[1] }));
         const res = await xenBurn.burn(amount, { from: accounts[1] });
-        const { gasUsed, rawLogs } = res.receipt;
+        const { gasUsed } = res.receipt;
         const newTokenId  = res.logs[0].args[2];
 
         parseInt(extraPrint || '0') > 0 && console.log('tokenId', newTokenId.toNumber(), 'gas used', gasUsed);
@@ -133,6 +131,27 @@ contract("XEN Burn", async accounts => {
         // tokenId = newTokenId.toNumber();
     })
 
+    it("Should be able to return tokenURI for another token as base-64 encoded data URL", async () => {
+        const amount = 10_001n * ether;
+        const encodedStr = await xenBurn.tokenURI(tokenId + 1)
+        assert.ok(encodedStr.startsWith('data:application/json;base64,'));
+        const base64str = encodedStr.replace('data:application/json;base64,', '');
+        const decodedStr = Buffer.from(base64str, 'base64').toString('utf8');
+        extraPrint === '3' && console.log(decodedStr)
+        const metadata = JSON.parse(decodedStr.replace(/\n/, ''));
+        assert.ok('name' in metadata);
+        assert.ok('description' in metadata);
+        assert.ok('image' in metadata);
+        assert.ok('attributes' in metadata);
+        assert.ok(Array.isArray(metadata.attributes));
+        assertAttribute(metadata.attributes)('Burned XEN', (amount / ether).toString());
+        assert.ok(metadata.image.startsWith('data:image/svg+xml;base64,'));
+        const imageBase64 = metadata.image.replace('data:image/svg+xml;base64,', '');
+        const decodedImage = Buffer.from(imageBase64, 'base64').toString();
+        assert.ok(decodedImage.startsWith('<svg'));
+        assert.ok(decodedImage.endsWith('</svg>'));
+        extraPrint === '2' && console.log(decodedImage);
+    })
 
     it("Should show correct token balance post XENFTs mints", async () => {
         const balance = await xenBurn.balanceOf(accounts[1], { from: accounts[1] }).then(_ => _.toNumber());
