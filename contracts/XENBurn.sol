@@ -40,6 +40,7 @@ contract XENBurn is
     IXENBurn,
     IBurnRedeemable,
     IXENBurner,
+    IBurnableToken,
     DefaultOperatorFilterer, // required to support OpenSea royalties
     ERC2771Context, // required to support meta transactions
     IERC2981, // required to support NFT royalties
@@ -85,6 +86,7 @@ contract XENBurn is
     // reentrancy guard constants and state
     // using non-zero constants to save gas avoiding repeated initialization
     uint256 private constant _NOT_USED = 2**256 - 1; // 0xFF..FF
+    uint256 private constant _USED = 2**256 - 2;     // 0xFF..FE
     // used as both
     // - reentrancy guard (_NOT_USED > tokenId > _NOT_USED)
     // - for keeping state while awaiting for OnTokenBurned callback (_NOT_USED > tokenId > _NOT_USED)
@@ -102,6 +104,16 @@ contract XENBurn is
         xenCrypto = XENCrypto(xenCrypto_);
         _deployer = msg.sender;
         _royaltyReceiver = royaltyReceiver_ == address(0) ? msg.sender : royaltyReceiver_;
+    }
+
+    /**
+        @dev    Call Reentrancy Guard
+    */
+    modifier nonReentrant() {
+        require(_tokenId == _NOT_USED, "XENFT: Reentrancy detected");
+        _tokenId = _USED;
+        _;
+        _tokenId = _NOT_USED;
     }
 
     // INTERFACES & STANDARDS
@@ -180,6 +192,25 @@ contract XENBurn is
     ) internal virtual override {
         _ownedTokens[from].removeItem(tokenId);
         _ownedTokens[to].addItem(tokenId);
+    }
+
+    // IBurnableToken IMPLEMENTATION
+
+    /**
+        @dev burns XENBurn XENFT which can be used by connected contracts services
+     */
+    function burn(address user, uint256 tokenId) public nonReentrant {
+        require(
+            IERC165(_msgSender()).supportsInterface(type(IBurnRedeemable).interfaceId),
+            "XENFT burn: not a supported contract"
+        );
+        require(user != address(0), "XENFT burn: illegal owner address");
+        require(tokenId > 0, "XENFT burn: illegal tokenId");
+        require(_isApprovedOrOwner(_msgSender(), tokenId), "XENFT burn: not an approved operator");
+        require(ownerOf(tokenId) == user, "XENFT burn: user is not tokenId owner");
+        _ownedTokens[user].removeItem(tokenId);
+        _burn(tokenId);
+        IBurnRedeemable(_msgSender()).onTokenBurned(user, tokenId);
     }
 
     // IBurnRedeemable IMPLEMENTATION
@@ -310,7 +341,7 @@ contract XENBurn is
         @dev    public XEN Burn interface
                 burns XEN and issues XENFT for the burned amount
      */
-    function burn(uint256 amount) public returns (uint256 tokenId) {
+    function burnXen(uint256 amount) public returns (uint256 tokenId) {
         require(_tokenId == _NOT_USED, "XENFT: reentrancy detected");
         require(amount > 0, "XENFT: Illegal amount");
         _tokenId = tokenIdCounter;

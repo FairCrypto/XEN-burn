@@ -65,7 +65,7 @@ contract("XEN Burn", async accounts => {
     })
 
     it("Should reject burn transaction with incorrect amount OR term", async () => {
-        assert.rejects(() => xenBurn.burn(0, { from: accounts[0] }));
+        assert.rejects(() => xenBurn.burnXen(0, { from: accounts[0] }));
     })
 
     it("Should allow to obtain initial XEN balance via regular minting", async () => {
@@ -81,13 +81,13 @@ contract("XEN Burn", async accounts => {
     });
 
     it("Should reject to perform burn operation without XEN approval", async () => {
-        await assert.rejects(() => xenBurn.burn(amount, { from: accounts[1] }));
+        await assert.rejects(() => xenBurn.burnXen(amount, { from: accounts[1] }));
     })
 
     it("Should allow to perform burn operation with correct params and approval", async () => {
         assert.ok(xenBalance > amount)
         await assert.doesNotReject(() => token.approve(xenBurn.address, amount, { from: accounts[1] }));
-        const res = await xenBurn.burn(amount, { from: accounts[1] });
+        const res = await xenBurn.burnXen(amount, { from: accounts[1] });
         const { gasUsed } = res.receipt;
         //console.log(res.logs)
         tokenId  = res.logs[0].args[2].toNumber();
@@ -122,7 +122,7 @@ contract("XEN Burn", async accounts => {
         xenBalance = await token.balanceOf(accounts[1], { from: accounts[1] }).then(toBigInt);
         assert.ok(xenBalance > amount)
         await assert.doesNotReject(() => token.approve(xenBurn.address, amount, { from: accounts[1] }));
-        const res = await xenBurn.burn(amount, { from: accounts[1] });
+        const res = await xenBurn.burnXen(amount, { from: accounts[1] });
         const { gasUsed } = res.receipt;
         const newTokenId  = res.logs[0].args[2];
 

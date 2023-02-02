@@ -1,6 +1,6 @@
 {
   "name": "@faircrypto/xen-burn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "XEN Proof of Burn XENFT",
   "main": "truffle-config.js",
   "directories": {
