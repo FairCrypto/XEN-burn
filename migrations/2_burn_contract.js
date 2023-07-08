@@ -26,7 +26,6 @@ module.exports = async function (deployer, network) {
     await deployer.link(MagicNumbers, XENBurn);
 
     const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-    // const startBlock = process.env[`${network.toUpperCase()}_START_BLOCK`] || 0;
     const forwarder = process.env[`${network.toUpperCase()}_FORWARDER`] || ZERO_ADDRESS;
     const royaltyReceiver = process.env[`${network.toUpperCase()}_ROYALTY_RECEIVER`] || ZERO_ADDRESS;
 
@@ -49,7 +48,5 @@ module.exports = async function (deployer, network) {
             forwarder,
             royaltyReceiver
         );
-    }
-    if (network === 'test') {
     }
 };

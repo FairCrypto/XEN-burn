@@ -3,8 +3,6 @@
 const assert = require('assert');
 const timeMachine = require('ganache-time-traveler');
 const {toBigInt} = require("../src/utils");
-// const {Contract} = require("ethers");
-// const {Web3Provider} = require("@ethersproject/providers");
 
 const XENCrypto = artifacts.require("XENCrypto");
 const XENBurn = artifacts.require("XENBurn");
@@ -177,6 +175,21 @@ contract("XEN Burn", async accounts => {
             () => xenBurn.transferFrom(accounts[2], accounts[3], tokenId + 1),
             'ERC721: transfer from incorrect owner'
         );
+    })
+
+    it("Should allow XENFT transfer by an owner", async () => {
+        await assert.doesNotReject(
+            () => xenBurn.transferFrom(accounts[1], accounts[3], tokenId + 1, { from: accounts[1] })
+        );
+    })
+
+    it("Should show correct token balances post-transfer", async () => {
+        const ownedTokens1 = await xenBurn.ownedTokens({ from: accounts[1] })
+          .then(tokenIds => tokenIds.map(id => id.toNumber()));
+        assert.ok(ownedTokens1.length === 1);
+        const ownedTokens3 = await xenBurn.ownedTokens({ from: accounts[3] })
+          .then(tokenIds => tokenIds.map(id => id.toNumber()));
+        assert.ok(ownedTokens3.length === 1);
     })
 
 })
