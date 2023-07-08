@@ -25,7 +25,7 @@ library BurnMetadata {
         @dev private helper to generate SVG gradients
      */
     function _gradients(uint256 rarityScore) private pure returns (BurnSVG.Gradient[] memory gradients) {
-        bool isRare = rarityScore >= 1_000;
+        bool isRare = rarityScore > 0;
         BurnSVG.Color[] memory colors = new BurnSVG.Color[](3);
         colors[0] = BurnSVG.Color({h: isRare ? 201 : 1, s: 30, l: 5, a: "1", off: 0});
         colors[1] = BurnSVG.Color({h: isRare ? 241 : 1, s: 45, l: 12, a: "1", off: 50});
