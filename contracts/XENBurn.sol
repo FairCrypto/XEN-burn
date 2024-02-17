@@ -185,13 +185,13 @@ contract XENBurn is
     /**
         @dev overrides OZ ERC-721 after transfer hook to allow token enumeration for owner
      */
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override {
+    function _update(address to, uint256 tokenId, address auth) internal virtual override returns (address) {
+        // put the code to run **before** the transfer HERE
+        address from = super._update(to, tokenId, auth);
+        // put the code to run **after** the transfer HERE
         _ownedTokens[from].removeItem(tokenId);
         _ownedTokens[to].addItem(tokenId);
+        return from;
     }
 
     // IBurnableToken IMPLEMENTATION
@@ -206,7 +206,10 @@ contract XENBurn is
         );
         require(user != address(0), "XENFT burn: illegal owner address");
         require(tokenId > 0, "XENFT burn: illegal tokenId");
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "XENFT burn: not an approved operator");
+        require(
+            user == ownerOf(tokenId) || isApprovedForAll(ownerOf(tokenId), user),
+            "XENFT burn: not an approved operator"
+        );
         require(ownerOf(tokenId) == user, "XENFT burn: user is not tokenId owner");
         _ownedTokens[user].removeItem(tokenId);
         _burn(tokenId);
@@ -263,20 +266,9 @@ contract XENBurn is
     function safeTransferFrom(
         address from,
         address to,
-        uint256 tokenId
-    ) public override onlyAllowedOperator(from) {
-        super.safeTransferFrom(from, to, tokenId);
-    }
-
-    /**
-        @dev implements `safeTransferFrom` with additional approved Operator checking
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
         uint256 tokenId,
         bytes memory data
-    ) public override onlyAllowedOperator(from) {
+    ) public virtual override onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
@@ -341,7 +333,7 @@ contract XENBurn is
         @dev    public XEN Burn interface
                 burns XEN and issues XENFT for the burned amount
      */
-    function burnXen(uint256 amount) public returns (uint256 tokenId) {
+    function burnXen(uint256 amount) internal returns (uint256 tokenId) {
         require(_tokenId == _NOT_USED, "XENFT: reentrancy detected");
         require(amount > 0, "XENFT: Illegal amount");
         _tokenId = tokenIdCounter;
